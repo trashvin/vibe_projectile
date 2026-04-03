@@ -174,6 +174,9 @@ class VibeProjectileApp(pyglet.window.Window):
         self.tank_move_goal = self.tank.x
         self.set_next_tank_goal()
 
+        self.tank_score = 0
+        self.city_score = 0
+
         self.close_button_radius = 22
         self.close_button_margin = 26
 
@@ -185,6 +188,10 @@ class VibeProjectileApp(pyglet.window.Window):
             font_size=38,
             color=(244, 230, 192, 255),
         )
+
+        self.winner = None
+        self.winner_flash_timer = 0.0
+        self.winner_flash_on = True
 
     def on_draw(self):
         pyglet.gl.glClearColor(0.58, 0.82, 0.98, 1.0)
@@ -432,6 +439,47 @@ class VibeProjectileApp(pyglet.window.Window):
             )
             info_label.draw()
 
+        # Draw scoreboard LAST so it is always visible
+        scoreboard_label = pyglet.text.Label(
+            f"TANK: {self.tank_score}    CITY: {self.city_score}",
+            font_name="Arial Black",
+            font_size=28,
+            x=constants.WINDOW_WIDTH // 2,
+            y=constants.WINDOW_HEIGHT - 20,
+            anchor_x="center",
+            anchor_y="center",
+            color=(255, 255, 255, 255),
+        )
+        scoreboard_label.draw()
+        # Draw flashing winner text if game ended
+        if self.winner is not None and self.winner_flash_on:
+            winner_text = f"WINNER: {self.winner}"
+            winner_label = pyglet.text.Label(
+                winner_text,
+                font_name="Arial Black",
+                font_size=64,
+                x=constants.WINDOW_WIDTH // 2,
+                y=constants.WINDOW_HEIGHT // 2,
+                anchor_x="center",
+                anchor_y="center",
+                color=(255, 255, 0, 255),
+            )
+            winner_label.draw()
+
+        # Draw the last fired angle, speed, and projected range as text
+        if getattr(self, "last_fired_angle", None) is not None:
+            info_label = pyglet.text.Label(
+                f"Angle: {self.last_fired_angle:.1f}°  Speed: {getattr(self, 'last_fired_speed', 0):.1f}  Range: {getattr(self, 'last_projected_range', 0):,.0f} px",
+                font_name="Arial",
+                font_size=18,
+                x=constants.WINDOW_WIDTH // 2,
+                y=constants.WINDOW_HEIGHT - 60,
+                anchor_x="center",
+                anchor_y="center",
+                color=(255, 255, 80, 255),
+            )
+            info_label.draw()
+
         ruler_y = 40
         ruler_x0 = 0
         ruler_len = constants.WINDOW_WIDTH
@@ -491,7 +539,16 @@ class VibeProjectileApp(pyglet.window.Window):
             if symbol == pyglet.window.key.Y:
                 self.reset_game()
             elif symbol == pyglet.window.key.N:
-                self.close()
+                # Determine winner
+                if self.tank_score > self.city_score:
+                    self.winner = "TANK"
+                elif self.city_score > self.tank_score:
+                    self.winner = "CITY"
+                else:
+                    self.winner = "DRAW"
+                self.winner_flash_timer = 0.0
+                self.winner_flash_on = True
+                self.show_try_again = False
                 return
             return
         if getattr(self, "goodbye", False):
@@ -546,6 +603,7 @@ class VibeProjectileApp(pyglet.window.Window):
                     self.explosions.append(Explosion(self.spaceship_target_x, self.spaceship_target_y, max_radius=120, duration=1.5))
                     self.state = "spaceship_explosion"
                     self.tank.x = -1000  # Hide tank
+                    self.city_score += 1  # CITY scores when tank explodes
             elif self.spaceship_explosion_done:
                 # After short delay, show try again
                 if not hasattr(self, "spaceship_explosion_timer"):
@@ -596,8 +654,8 @@ class VibeProjectileApp(pyglet.window.Window):
                     self.projectile.y,
                     speed=600
                 )
-                # 50% chance to hit
-                if random.random() < 0.5:
+                # 70% chance to hit
+                if random.random() < 0.7:
                     self.missile_result = "hit"
                     # Immediately destroy projectile if missile hits
                     self.projectile.alive = False
@@ -608,7 +666,7 @@ class VibeProjectileApp(pyglet.window.Window):
                     else:
                         self.missile_hit_streak = 1
                     print(f"Hit = {self.missile_hit_streak}")
-                    if self.missile_hit_streak == 4:
+                    if self.missile_hit_streak == 3:
                         print("[DEBUG] Spaceship event triggered after 4 consecutive missile hits!")
                         self.trigger_spaceship_attack()
                         self.missile_hit_streak = 0
@@ -631,29 +689,21 @@ class VibeProjectileApp(pyglet.window.Window):
                     self.goodbye = False
                     print("City explosion triggered: projectile hit the ground!")
                     print("city is hit")
+                    self.tank_score += 1  # TANK scores when city explodes
                     for b in self.city.buildings:
                         bx = b.x + b.width / 2
                         by = b.y + b.height / 2
                         self.explosions.append(Explosion(bx, by, max_radius=60, duration=1.2))
                     self.explosions.append(Explosion(self.city.center_x, self.city.center_y, max_radius=260, duration=2.5))
-                elif getattr(self, "missile_result", None) in ("hit", "safe"):
-                    self.projectile.alive = False
-                    print("Missile intercepted projectile. City is safe.")
-                    self.laser_shot = None
-                    self.laser_result = None
-                # Show 'we are safe' message if missile hit
-                if getattr(self, "missile_result", None) in ("hit", "safe") and not getattr(self, "game_over", False):
-                    safe_label = pyglet.text.Label(
-                        "we are safe",
-                        font_name="Arial Black",
-                        font_size=48,
-                        color=(0, 180, 255, 255),
-                        x=constants.WINDOW_WIDTH // 2,
-                        y=constants.WINDOW_HEIGHT // 2 - 120,
-                        anchor_x="center",
-                        anchor_y="center",
-                    )
-                    safe_label.draw()
+
+        # Spaceship bomb event (tank explodes)
+        if getattr(self, "spaceship_active", False) and self.spaceship_explosion_done and not hasattr(self, "_score_added"):
+            self.city_score += 1  # CITY scores when tank explodes
+            self._score_added = True
+        if not getattr(self, "spaceship_active", False):
+            if hasattr(self, "_score_added"):
+                del self._score_added
+
         # Show try again prompt
         if getattr(self, "show_try_again", False):
             try_again_label = pyglet.text.Label(
