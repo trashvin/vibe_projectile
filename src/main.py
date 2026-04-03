@@ -335,22 +335,33 @@ class VibeProjectileApp(pyglet.window.Window):
         if getattr(self, "spaceship_active", False):
             ship_y = self.spaceship_y if self.spaceship_y is not None else 0
             ship_x = self.spaceship_x if self.spaceship_x is not None else 0
-            body_w = 90
-            body_h = 35
-            dome_r = 28
-            wing_w = 38
-            wing_h = 18
-            pyglet.shapes.Rectangle(ship_x - body_w//2, ship_y, body_w, body_h, color=(180, 180, 255), batch=None).draw()
-            pyglet.shapes.Circle(ship_x, ship_y + body_h, dome_r, color=(120, 120, 255), batch=None).draw()
-            pyglet.shapes.Triangle(ship_x - body_w//2, ship_y, ship_x - body_w//2 - wing_w, ship_y - wing_h, ship_x - body_w//2 + 20, ship_y + 10, color=(100, 100, 200), batch=None).draw()
-            pyglet.shapes.Triangle(ship_x + body_w//2, ship_y, ship_x + body_w//2 + wing_w, ship_y - wing_h, ship_x + body_w//2 - 20, ship_y + 10, color=(100, 100, 200), batch=None).draw()
-            if self.spaceship_bomb_dropped and self.spaceship_bomb_y is not None:
-                pyglet.shapes.Circle(self.spaceship_target_x, self.spaceship_bomb_y, 18, color=(60, 60, 60), batch=None).draw()
-                pyglet.shapes.Circle(self.spaceship_target_x + 5, self.spaceship_bomb_y + 5, 7, color=(180, 180, 180), batch=None).draw()
-            if self.spaceship_explosion_done:
-                explosion = pyglet.shapes.Circle(self.spaceship_target_x, self.spaceship_target_y, 60, color=(255, 80, 40), batch=None)
-                explosion.opacity = 180
-                explosion.draw()
+            # Prefer entity's sprite-based drawing when available
+            if hasattr(self, "spaceship") and self.spaceship is not None:
+                try:
+                    self.spaceship.update_position(ship_x, ship_y)
+                except Exception:
+                    pass
+                try:
+                    self.spaceship.draw(batch=batch, bomb_dropped=self.spaceship_bomb_dropped, bomb_y=self.spaceship_bomb_y, target_x=self.spaceship_target_x, target_y=self.spaceship_target_y)
+                except Exception:
+                    pass
+            else:
+                body_w = 90
+                body_h = 35
+                dome_r = 28
+                wing_w = 38
+                wing_h = 18
+                pyglet.shapes.Rectangle(ship_x - body_w//2, ship_y, body_w, body_h, color=(180, 180, 255), batch=None).draw()
+                pyglet.shapes.Circle(ship_x, ship_y + body_h, dome_r, color=(120, 120, 255), batch=None).draw()
+                pyglet.shapes.Triangle(ship_x - body_w//2, ship_y, ship_x - body_w//2 - wing_w, ship_y - wing_h, ship_x - body_w//2 + 20, ship_y + 10, color=(100, 100, 200), batch=None).draw()
+                pyglet.shapes.Triangle(ship_x + body_w//2, ship_y, ship_x + body_w//2 + wing_w, ship_y - wing_h, ship_x + body_w//2 - 20, ship_y + 10, color=(100, 100, 200), batch=None).draw()
+                if self.spaceship_bomb_dropped and self.spaceship_bomb_y is not None:
+                    pyglet.shapes.Circle(self.spaceship_target_x, self.spaceship_bomb_y, 18, color=(60, 60, 60), batch=None).draw()
+                    pyglet.shapes.Circle(self.spaceship_target_x + 5, self.spaceship_bomb_y + 5, 7, color=(180, 180, 180), batch=None).draw()
+                if self.spaceship_explosion_done:
+                    explosion = pyglet.shapes.Circle(self.spaceship_target_x, self.spaceship_target_y, 60, color=(255, 80, 40), batch=None)
+                    explosion.opacity = 180
+                    explosion.draw()
 
         # Draw missile shot line if missile has hit
         elif not getattr(self, "game_over", False) and getattr(self, "missile_shot", None) is not None:
@@ -690,16 +701,15 @@ class VibeProjectileApp(pyglet.window.Window):
             print(f"[DEBUG] Checking dome collision: projectile=({self.projectile.x:.2f},{self.projectile.y:.2f}), dome=({self.dome.center_x:.2f},{self.dome.center_y:.2f})")
             if self.missile_result is None and self.projectile.hits_dome(self.dome):
                 print("[DEBUG] Anti-missile launcher firing at projectile!")
-                # Spawn missile animation
+                # Spawn missile animation (pass projectile object so missile can home on it)
                 self.missile = entities.Missile(
                     self.city.anti_missile_launcher_x,
                     self.city.anti_missile_launcher_y,
-                    self.projectile.x,
-                    self.projectile.y,
-                    speed=600
+                    self.projectile,
+                    speed=600,
                 )
-                # 70% chance to hit
-                if random.random() < 0.7:
+                # 90% chance to hit
+                if random.random() < 0.9:
                     self.missile_result = "hit"
                     # Immediately destroy projectile if missile hits
                     self.projectile.alive = False

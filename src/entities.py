@@ -78,23 +78,65 @@ class City:
 
         cannon_x = self.anti_missile_launcher_x
         cannon_y = self.anti_missile_launcher_y
-        base = pyglet.shapes.Rectangle(cannon_x - 14, cannon_y - 18, 28, 14, color=(66, 66, 70), batch=batch)
-        base.draw()
-        body = pyglet.shapes.Rectangle(cannon_x - 10, cannon_y - 8, 20, 16, color=(200, 50, 50), batch=batch)
-        body.draw()
 
-        barrel_len = 40
-        if tank is not None:
-            dx = tank.x + tank.width * 0.5 - cannon_x
-            dy = tank.y + tank.height * 0.5 - cannon_y
-            angle = math.atan2(dy, dx)
-            end_x = cannon_x + math.cos(angle) * barrel_len
-            end_y = cannon_y + math.sin(angle) * barrel_len
-            cannon_line = pyglet.shapes.Line(cannon_x, cannon_y, end_x, end_y, color=(255, 0, 0), batch=batch)
-            cannon_line.draw()
-        else:
-            barrel = pyglet.shapes.Rectangle(cannon_x + 7, cannon_y + 3, 24, 6, color=(255, 80, 80), batch=batch)
-            barrel.draw()
+        # Try to draw the anti-missile launcher using an image sprite if available.
+        try:
+            import os
+
+            sprite_path = os.path.normpath(os.path.join(os.path.dirname(__file__), "..", "media", "image_cannon.png"))
+            img = pyglet.image.load(sprite_path)
+            # anchor center horizontally, bottom vertically
+            try:
+                img.anchor_x = img.width // 2
+                img.anchor_y = 0
+            except Exception:
+                pass
+            sprite = pyglet.sprite.Sprite(img)
+            # scale to be proportionate to city: target width ~ 56px
+            try:
+                desired_w = 56
+                if img.width:
+                    sprite.scale = desired_w / float(img.width)
+            except Exception:
+                pass
+            # position at ground center
+            try:
+                sprite.x = cannon_x
+                sprite.y = cannon_y
+            except Exception:
+                pass
+
+            # rotate to point at tank (if available)
+            if tank is not None:
+                dx = tank.x + tank.width * 0.5 - cannon_x
+                dy = tank.y + tank.height * 0.5 - cannon_y
+                angle = math.degrees(math.atan2(dy, dx))
+                try:
+                    # Flip the cannon 180 degrees so it faces correctly
+                    sprite.rotation = angle + 180.0
+                except Exception:
+                    pass
+
+            sprite.draw()
+        except Exception:
+            # Fallback to shape drawing if image not available or fails
+            base = pyglet.shapes.Rectangle(cannon_x - 14, cannon_y - 18, 28, 14, color=(66, 66, 70), batch=batch)
+            base.draw()
+            body = pyglet.shapes.Rectangle(cannon_x - 10, cannon_y - 8, 20, 16, color=(200, 50, 50), batch=batch)
+            body.draw()
+
+            barrel_len = 40
+            if tank is not None:
+                dx = tank.x + tank.width * 0.5 - cannon_x
+                dy = tank.y + tank.height * 0.5 - cannon_y
+                angle = math.atan2(dy, dx)
+                end_x = cannon_x + math.cos(angle) * barrel_len
+                end_y = cannon_y + math.sin(angle) * barrel_len
+                cannon_line = pyglet.shapes.Line(cannon_x, cannon_y, end_x, end_y, color=(255, 0, 0), batch=batch)
+                cannon_line.draw()
+            else:
+                barrel = pyglet.shapes.Rectangle(cannon_x + 7, cannon_y + 3, 24, 6, color=(255, 80, 80), batch=batch)
+                barrel.draw()
 
     def explode(self):
         # Play explosion sound 3 times
@@ -180,15 +222,35 @@ class Tank:
         SoundPlayer.play_sound("media/sound_explosion.mp3", repeat=1)
 
 class Missile:
-    def __init__(self, start_x, start_y, target_x, target_y, speed=600):
+    def __init__(self, start_x, start_y, target, speed=600):
+        """
+        `target` may be an object with `x`/`y` attributes (e.g., Projectile) or a (x, y) tuple.
+        The missile will home towards the current target position if an object is provided.
+        """
         self.x = start_x
         self.y = start_y
-        self.target_x = target_x
-        self.target_y = target_y
         self.speed = speed
         self.alive = True
-        dx = target_x - start_x
-        dy = target_y - start_y
+        self.target_obj = None
+        self.target_x = None
+        self.target_y = None
+        if hasattr(target, "x") and hasattr(target, "y"):
+            self.target_obj = target
+            self.target_x = getattr(target, "x")
+            self.target_y = getattr(target, "y")
+        elif isinstance(target, (tuple, list)) and len(target) >= 2:
+            self.target_x, self.target_y = target[0], target[1]
+        else:
+            # assume numeric coords provided as two args
+            try:
+                self.target_x, self.target_y = target
+            except Exception:
+                self.target_x = start_x
+                self.target_y = start_y
+
+        # initialize velocity towards initial target position
+        dx = self.target_x - start_x
+        dy = self.target_y - start_y
         dist = math.hypot(dx, dy)
         if dist == 0:
             self.vx = 0
@@ -196,31 +258,51 @@ class Missile:
         else:
             self.vx = dx / dist * speed
             self.vy = dy / dist * speed
+
         # Play anti-missile launcher fire sound
         SoundPlayer.play_sound("media/sound_laser.mp3")
     
     def update(self, dt):
         if not self.alive:
             return
-        dx = self.target_x - self.x
-        dy = self.target_y - self.y
+
+        # If homing on a live object, refresh target coords
+        if self.target_obj is not None and getattr(self.target_obj, "alive", True):
+            tx = getattr(self.target_obj, "x")
+            ty = getattr(self.target_obj, "y")
+        else:
+            tx = self.target_x
+            ty = self.target_y
+
+        dx = tx - self.x
+        dy = ty - self.y
         dist = math.hypot(dx, dy)
         step = self.speed * dt
-        if dist <= step:
-            self.x = self.target_x
-            self.y = self.target_y
+        if dist <= step or dist == 0:
+            # reached target
+            self.x = tx
+            self.y = ty
             self.alive = False
         else:
-            # move along velocity vector
+            # recompute velocity towards current target (homing behavior)
+            try:
+                self.vx = dx / dist * self.speed
+                self.vy = dy / dist * self.speed
+            except Exception:
+                pass
             self.x += self.vx * dt
             self.y += self.vy * dt
 
     def draw(self, batch):
-        color = (0, 255, 80) if self.alive else (120, 180, 120)
-        # Draw missile body as ellipse
-        pyglet.shapes.Ellipse(self.x, self.y, 18, 8, color=color, batch=batch).draw()
-        # Draw a line showing the missile's path to target
-        pyglet.shapes.Line(self.x, self.y, self.target_x, self.target_y, color=(0, 200, 80), batch=batch).draw()
+        # Draw missile as a blue circular projectile (alive vs destroyed color)
+        color = (60, 140, 255) if self.alive else (120, 180, 200)
+        radius = 12
+        pyglet.shapes.Circle(self.x, self.y, radius, color=color, batch=batch).draw()
+        # Optional faint trail line to the target
+        try:
+            pyglet.shapes.Line(self.x, self.y, self.target_x, self.target_y, color=(100, 150, 255), batch=batch).draw()
+        except Exception:
+            pass
 
 class Projectile:
     def __init__(self, x, y, vx, vy, radius=constants.PROJECTILE_RADIUS):
@@ -260,8 +342,36 @@ class Projectile:
         circle.draw()
 
 class Spaceship:
-    def __init__(self):
+    def __init__(self, x=0, y=0, rotation_deg=0):
         self.flying = False
+        self.x = x
+        self.y = y
+        self.rotation_deg = rotation_deg
+        self.sprite = None
+        self._load_sprite()
+
+    def _load_sprite(self):
+        try:
+            import os
+
+            sprite_path = os.path.normpath(os.path.join(os.path.dirname(__file__), "..", "media", "image_spaceship.png"))
+            img = pyglet.image.load(sprite_path)
+            # Anchor the image so sprite.x is center and sprite.y is bottom
+            try:
+                img.anchor_x = img.width // 2
+                img.anchor_y = 0
+            except Exception:
+                pass
+            self.sprite = pyglet.sprite.Sprite(img)
+            # Scale sprite to match old ship body width (~90 px)
+            try:
+                desired_w = 90
+                if img.width:
+                    self.sprite.scale = desired_w / float(img.width)
+            except Exception:
+                pass
+        except Exception:
+            self.sprite = None
 
     def start_flying(self):
         if not self.flying:
@@ -273,9 +383,45 @@ class Spaceship:
             SoundPlayer.stop_sound("media/sound_spaceship.mp3")
             self.flying = False
 
+    def update_position(self, x, y):
+        self.x = x
+        self.y = y
+        if self.sprite is not None:
+            # position sprite with bottom at y
+            try:
+                self.sprite.x = int(self.x)
+                self.sprite.y = int(self.y)
+                pass
+            except Exception:
+                pass
+
+    def draw(self, batch=None, bomb_dropped=False, bomb_y=None, target_x=None, target_y=None):
+        # Draw the spaceship using the loaded sprite if available, otherwise fallback to shapes.
+        if self.sprite is not None:
+            try:
+                self.sprite.draw()
+            except Exception:
+                pass
+        else:
+            body_w = 90
+            body_h = 35
+            dome_r = 28
+            wing_w = 38
+            wing_h = 18
+            pyglet.shapes.Rectangle(self.x - body_w // 2, self.y, body_w, body_h, color=(180, 180, 255), batch=batch).draw()
+            pyglet.shapes.Circle(self.x, self.y + body_h, dome_r, color=(120, 120, 255), batch=batch).draw()
+            pyglet.shapes.Triangle(self.x - body_w // 2, self.y, self.x - body_w // 2 - wing_w, self.y - wing_h, self.x - body_w // 2 + 20, self.y + 10, color=(100, 100, 200), batch=batch).draw()
+            pyglet.shapes.Triangle(self.x + body_w // 2, self.y, self.x + body_w // 2 + wing_w, self.y - wing_h, self.x + body_w // 2 - 20, self.y + 10, color=(100, 100, 200), batch=batch).draw()
+
+        # Draw bomb if dropped (simple circle)
+        if bomb_dropped and bomb_y is not None and target_x is not None:
+            pyglet.shapes.Circle(target_x, bomb_y, 18, color=(60, 60, 60), batch=batch).draw()
+            pyglet.shapes.Circle(target_x + 5, bomb_y + 5, 7, color=(180, 180, 180), batch=batch).draw()
+
 class Bomb:
     def __init__(self):
-        pass
+        self.x = None
+        self.y = None
 
     def drop(self):
         SoundPlayer.play_sound("media/sound_falling_bomb.mp3")

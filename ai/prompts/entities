@@ -22,14 +22,16 @@ Anti-missile launcher
 - The anti-missile launcher fires a missile towards the projectile when it hits the dome, with a 100% chance to hit.
 - If the projectile is hit, the city is safe (explosion only at the projectile). If not, the projectile continues and may cause a city explosion if it hits the ground.
 - when the anti-missile fires, the sound ..\media\sound_laser.mp3 should be played once.
+- use the image in ..\media\image_cannon.png. make sure resize it tobe prportionate to the city
 
 missile
-- this fired by te anti-missile launcher
-- its an oblong projectile that is aimed at the incoming projectile.
+- this fired by the anti-missile launcher
+- its a blue circle projectile that is aimed at the incoming projectile.
 - it also follows the physics behind projectiles.
 
 Spaceship
 - when the spaceship flies, it should play the sound ..\media\sound_spaceship.mp3 while flying.
+- insted of using shapes to draw the spaceship, use the image ..\media\image_spaceship.png as reference
 
 Bomb
 - when the bomb is dropped from the spaceship, it should play the sound ..\media\sound_falling_bomb.mp3 once.
