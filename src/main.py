@@ -191,43 +191,8 @@ class VibeProjectileApp(pyglet.window.Window):
         self.clear()
         batch = pyglet.graphics.Batch()
 
-        # Draw background, city, dome, tank, projectile, explosions using batch
-        self.city.draw(batch, tank=self.tank, fade=0.0)
-        self.dome.draw(batch)
-        self.tank.draw(batch)
-        if self.projectile is not None:
-            self.is_first_move = True
-        for explosion in self.explosions:
-            explosion.draw()
 
-        # Draw spaceship and bomb if active, using batch
-        if getattr(self, "spaceship_active", False):
-            ship_y = self.spaceship_y if self.spaceship_y is not None else 0
-            ship_x = self.spaceship_x if self.spaceship_x is not None else 0
-            pyglet.shapes.Rectangle(ship_x - 90, ship_y, 180, 70, color=(180, 180, 255), batch=batch)
-            pyglet.shapes.Circle(ship_x, ship_y + 70, 55, color=(120, 120, 255), batch=batch)
-            pyglet.shapes.Triangle(ship_x - 90, ship_y, ship_x - 130, ship_y - 40, ship_x - 50, ship_y + 20, color=(100, 100, 200), batch=batch)
-            pyglet.shapes.Triangle(ship_x + 90, ship_y, ship_x + 130, ship_y - 40, ship_x + 50, ship_y + 20, color=(100, 100, 200), batch=batch)
-            if self.spaceship_bomb_dropped and self.spaceship_bomb_y is not None:
-                pyglet.shapes.Circle(self.spaceship_target_x, self.spaceship_bomb_y, 44, color=(60, 60, 60), batch=batch)
-                pyglet.shapes.Circle(self.spaceship_target_x + 12, self.spaceship_bomb_y + 12, 16, color=(180, 180, 180), batch=batch)
-            if self.spaceship_explosion_done:
-                explosion = pyglet.shapes.Circle(self.spaceship_target_x, self.spaceship_target_y, 160, color=(255, 80, 40), batch=batch)
-                explosion.opacity = 180
-                explosion.draw()
-
-        # Draw missile if present
-        if hasattr(self, "missile") and self.missile is not None and self.missile.alive:
-            self.missile.draw(batch)
-
-        # Draw batch (all shapes)
-        batch.draw()
-
-        # Draw overlays and UI (labels, prompts, etc.) as before (not in batch)
-        # ...existing code for overlays and UI...
-        pyglet.gl.glClearColor(0.58, 0.82, 0.98, 1.0)
-        self.clear()
-
+        # Draw background terrain, mountains, hills, bushes, etc. (not in batch)
         sun_pulse = 2.0 * math.sin(self.scene_time * 1.7)
         sun = shapes.Circle(1110, 600, 54 + sun_pulse, color=(253, 217, 88), batch=None)
         sun.opacity = 235
@@ -235,6 +200,26 @@ class VibeProjectileApp(pyglet.window.Window):
         for ray_dx, ray_dy in ((0, 82), (58, 58), (82, 0), (58, -58), (0, -82), (-58, -58), (-82, 0), (-58, 58)):
             shapes.Line(1110, 600, 1110 + ray_dx, 600 + ray_dy, color=(255, 204, 90), batch=None).draw()
 
+
+        block_w = 40
+        for i in range(0, constants.WINDOW_WIDTH, block_w):
+            shade = 188 if (i // block_w) % 2 == 0 else 162
+            shapes.Rectangle(i, 0, block_w, constants.GROUND_HEIGHT, color=(shade, 118, 38), batch=None).draw()
+            shapes.Rectangle(i + 5, constants.GROUND_HEIGHT - 16, block_w - 10, 16, color=(shade + 22, 154, 78), batch=None).draw()
+        for hill_x, hill_y, hill_r, color in ((150, 120, 60, (110, 176, 88)), (310, 115, 85, (124, 193, 92)), (870, 118, 70, (105, 172, 90))):
+            hill = shapes.Circle(hill_x, hill_y, hill_r, color=color, batch=None)
+            hill.opacity = 215
+            hill.draw()
+
+        for bush_x in (110, 370, 670, 980):
+            for offset_x, radius in ((0, 18), (16, 24), (36, 20)):
+                bush = shapes.Circle(bush_x + offset_x, constants.GROUND_HEIGHT + 10, radius, color=(66, 146, 52), batch=None)
+                bush.opacity = 220
+                bush.draw()
+
+
+
+        # Draw mountains (after background, before spaceship)
         for mountain in (
             ((20, constants.GROUND_HEIGHT), (220, 418), (440, constants.GROUND_HEIGHT), (150, 190, 94)),
             ((250, constants.GROUND_HEIGHT), (510, 474), (780, constants.GROUND_HEIGHT), (118, 175, 92)),
@@ -252,6 +237,23 @@ class VibeProjectileApp(pyglet.window.Window):
                 color=(248, 248, 242),
                 batch=None,
             ).draw()
+
+        # Draw city, dome, tank, projectile, explosions using batch
+        self.city.draw(batch, tank=self.tank, fade=0.0)
+        self.dome.draw(batch)
+        self.tank.draw(batch)
+        if self.projectile is not None:
+            self.is_first_move = True
+        for explosion in self.explosions:
+            explosion.draw()
+
+        # Draw missile if present
+        if hasattr(self, "missile") and self.missile is not None and self.missile.alive:
+            self.missile.draw(batch)
+
+        # Draw batch (all shapes)
+        batch.draw()
+
 
         for cloud_x, cloud_y in ((175, 615), (430, 565), (760, 630)):
             for offset_x, offset_y, radius in ((0, 0, 20), (25, 10, 24), (55, 0, 20)):
@@ -296,6 +298,28 @@ class VibeProjectileApp(pyglet.window.Window):
         # Draw missile if present
         if hasattr(self, "missile") and self.missile is not None and self.missile.alive:
             self.missile.draw(None)
+
+        # Draw spaceship and bomb on top of all background/city/dome/tank graphics
+        if getattr(self, "spaceship_active", False):
+            ship_y = self.spaceship_y if self.spaceship_y is not None else 0
+            ship_x = self.spaceship_x if self.spaceship_x is not None else 0
+            body_w = 90
+            body_h = 35
+            dome_r = 28
+            wing_w = 38
+            wing_h = 18
+            pyglet.shapes.Rectangle(ship_x - body_w//2, ship_y, body_w, body_h, color=(180, 180, 255), batch=None).draw()
+            pyglet.shapes.Circle(ship_x, ship_y + body_h, dome_r, color=(120, 120, 255), batch=None).draw()
+            pyglet.shapes.Triangle(ship_x - body_w//2, ship_y, ship_x - body_w//2 - wing_w, ship_y - wing_h, ship_x - body_w//2 + 20, ship_y + 10, color=(100, 100, 200), batch=None).draw()
+            pyglet.shapes.Triangle(ship_x + body_w//2, ship_y, ship_x + body_w//2 + wing_w, ship_y - wing_h, ship_x + body_w//2 - 20, ship_y + 10, color=(100, 100, 200), batch=None).draw()
+            if self.spaceship_bomb_dropped and self.spaceship_bomb_y is not None:
+                pyglet.shapes.Circle(self.spaceship_target_x, self.spaceship_bomb_y, 18, color=(60, 60, 60), batch=None).draw()
+                pyglet.shapes.Circle(self.spaceship_target_x + 5, self.spaceship_bomb_y + 5, 7, color=(180, 180, 180), batch=None).draw()
+            if self.spaceship_explosion_done:
+                explosion = pyglet.shapes.Circle(self.spaceship_target_x, self.spaceship_target_y, 60, color=(255, 80, 40), batch=None)
+                explosion.opacity = 180
+                explosion.draw()
+
         # Draw missile shot line if missile has hit
         elif not getattr(self, "game_over", False) and getattr(self, "missile_shot", None) is not None:
             lx, ly = self.city.anti_missile_launcher_x, self.city.anti_missile_launcher_y
