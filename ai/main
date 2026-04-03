@@ -1,0 +1,12 @@
+# this is the main prompt, everything starts here.
+-----
+
+Defines
+
+#root_dir = ../
+
+Instructions
+1. Initialize the git directory at #root_dir if not yet set.
+2. Create a script in the ../setup folder that to setup the virtual environment in the #root_dir
+3. Create a file named requirements.txt , this will contain a list of packages need by the application.
+4. Create a script in the ../setup folder that will install the needed packages found in the ../requirements.txt

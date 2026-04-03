@@ -1,0 +1,18 @@
+# notes here..
+
+Instruction:
+- create a full screen app with new resolution of of 1280x720.
+- assume that resolution represents the in kilometers.
+- the upper right corner should have a graphic button that when clicked, will close the app.
+- the background will be dark grey.
+- a text in artistic font of the app title "Vibe Projectile" is written on the upper left of the screen.
+- the lower screen depicts a land similar to the game Mario.
+- on the right part of the screen is the city. this is 1000000 m from the left. the city will be described on the entities instruction.
+- on the left is the tank, positioned 10000 m from the left. the tank is described on the entities file.
+- at the center of the city, add an anti-missile launcher. see the entities file for details.
+- ensure tank firing angle range is 10 to 60 degrees, and projectile initial speed is enough to reach anti-missile launcher center.
+- add a ruler at the bottom of screen showing the distances in meters. it should start on the left most and end on the right most part of screen, covering full visible width.
+- the ruler should be labeled at 10000 m increments and drawn as a small horizontal scale overlay above the UI margin. the ruler and measurement should be visible on the screen and the font should be large.
+- the city position is 1000000 m from the left (1,000,000 meters), while the tank is still at 10000 m from the left.
+- make the bacground lighter with sun, mountains, birds but keep the Mario theme intact.
+- add text to display the initial firing angle,initial velocity,projected range 

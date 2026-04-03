@@ -1,0 +1,13 @@
+# notes here...
+
+Instructions
+- this is a python using pyglet app
+- all codes and subfolders reside on the ../src folder.
+- unit test should be created for important methods and flow.
+- create a simple python simulation app using pyglet.
+- all required packages must be added in the reqirements.txt in the #root_folder
+- the requirements is specifically listed in the following files:
+    > layout = contains the general layout of the app screen and should be executed first
+    > entities = contains specific instructions for every entities in the app and should be executed after layout
+    > logic = contains the specific instruction for the business logic, how each entities interact as well as other rules, and should be executed after entities
+    > fix_prompts = contains implementation fixes and compatibility adjustments, and should be executed last after layout, entities, and logic

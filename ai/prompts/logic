@@ -1,0 +1,29 @@
+# notes here
+
+Instruction
+1. At the start of the app, the tank should move a random distance (500 - 5000 meters) towards the city. The animation should show the tank moving visibly (in screen units this is scaled up for display).
+2. It will stop and fire one projectile towards the city, at a random target near the city center. The projectile should be fired at a random angle between 10 and 60 degrees, so that it can hit different areas of the city and dome.
+	The angle at which the projectile was fired should be displayed as text on the screen.
+3. Projectile kinetic parameters should be chosen so the shot can reach the dome and the city center is within the possible hit area.
+4. Once the projectile hits the dome, the anti-missile launcher fires a missile towards the projectile. The anti-missile launcher has a 95% chance to hit the projectile.
+    a. If the projectile is hit (missile_result is 'hit' or 'safe'), the city is safe: the projectile from the tank explodes in the air, disappears, and does not continue its path. The screen displays "we are safe". Pressing Enter will restart the process from step #1.
+    b. If the projectile is not hit (missile_result is None, 'fail', or 'miss'), the projectile continues its path until it hits the ground; then the city explodes with a large nuclear cloud, draw a cloud all over the city to indicate explosion, and the app displays "the end" on the screen.
+
+9. When the game ends (city explodes), the app should prompt the user: "Try again? (Y/N)".
+    a. If the user selects Yes (Y), the city is recreated, all explosions are cleared, the tank is reset, and the firing sequence restarts from step 1.
+    b. If the user selects No (N), the screen displays "good bye" and the app stops firing or animating. All previous text but retain the scene should be cleared before displaying the goodbye message.
+10. When the missile hits the projectile and the city is safe, the app should display "we are safe" on the screen. Pressing Enter will restart the process from step 1.
+
+# Implementation Note:
+# The ground collision and city explosion/game over logic is handled in main.py (VibeProjectileApp.update).
+# The Projectile.update method does NOT set alive=False or clamp y when hitting the ground; this ensures main.py always triggers the explosion/game over logic.
+#
+# Rendering Note:
+# All game objects, including the spaceship and bomb, must be drawn using the same pyglet.graphics.Batch in on_draw. This ensures all objects are visible and rendered in the correct order. Overlays and UI labels are drawn after batch.draw().
+5. The tank will move randomly towards or away from the city, but should not come closer than 10000 meters to the dome edge. The laser light from the canon is erased.
+6. It will fire another projectile again using the same rules as #3 and #4. the laser canon will try to hit the projectile.
+7. The action should continue in a loop until the app is closed.
+
+8. If the anti-missile launcher successfully hits the projectile 4 consecutive times (without any miss in between), immediately trigger a spaceship event: a spaceship flies from the top of the tallest building and drops a bomb directly on the tank, causing the tank to explode. The animation must show the spaceship flying down, dropping the bomb, and the tank exploding with a large blast. After this, the app should prompt the user: "Try again? (Y/N)". If Yes, the game resets as usual; if No, display "good bye" and stop the game. The spaceship event must interrupt the normal firing sequence and take priority as soon as the 4th hit occurs.
+
+Additional Constraints:

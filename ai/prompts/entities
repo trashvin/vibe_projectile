@@ -1,0 +1,25 @@
+# notes here
+
+City
+- this is the description of the city.
+- the city is 150 km wide.
+- the city is composed of 10 buildings overlapped. The height of the buildings are random, but no building should exceed the height of the dome.
+- the buildings should mimic the buildings from the game Mario.
+- the city is protected by an invisible dome represented by white lines.
+- the dome's center is at the center of the city at ground level. It covers a 250 kilometer radius in the land and air.
+
+Tank
+- description of the tank
+- the tank is similar to an old world war 2 US tank.
+- the tank should fire the projectile at a random angle between 10 and 60 degrees, so that it can hit different areas of the city and dome. The initial velocity of the projectile should be enough to reach the center of the anti-missile launcher.
+- the tank's canon angle should adjust based on the angle of the projectile.
+
+Anti-missile launcher
+- The anti-missile launcher must be positioned at ground level (not on top of any building) and point in the direction of the incoming projectile.
+- The anti-missile launcher fires a missile towards the projectile when it hits the dome, with a 100% chance to hit.
+- If the projectile is hit, the city is safe (explosion only at the projectile). If not, the projectile continues and may cause a city explosion if it hits the ground.
+
+missile
+- this fired by te anti-missile launcher
+- its an oblong projectile that is aimed at the incoming projectile.
+- it also follows the physics behind projectiles.

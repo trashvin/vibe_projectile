@@ -1,0 +1,13 @@
+# notes here...
+
+Instructions
+- execute this prompt last, after layout, entities, and logic.
+- apply implementation fixes and compatibility adjustments that are discovered while building the app.
+- for macOS Retina or other Hi-DPI displays in pyglet, configure DPI scaling so the 1280x720 scene fills the whole visible window instead of rendering into only part of the framebuffer.
+- for pyglet label in src/main.py, remove `bold=True` since `pyglet.text.Label` does not support `bold` argument and causes TypeError.
+- for pyglet circles in src/entities.py and src/main.py, set `opacity` via the object property after creation (for example: `circle = shapes.Circle(...); circle.opacity = 30`) because `shapes.Circle.__init__` does not accept `opacity`.
+- for pyglet Line in src/entities.py, do not pass unsupported `width` keyword. use the default line thickness, or draw a thin rectangle as a workaround, to avoid `TypeError: Line.__init__() got an unexpected keyword argument 'width'.`.
+- Added an 'alive' property and update() method to the Explosion class to fix AttributeError: 'Explosion' object has no attribute 'alive'.
+- Added a draw() method to the Explosion class to fix AttributeError: 'Explosion' object has no attribute 'draw'.
+- Wrapped the main window/game logic in a VibeProjectileApp class to fix NameError: name 'VibeProjectileApp' is not defined.
+- Updated fire_projectile to select a random firing angle between 10 and 60 degrees and compute the required speed for that angle, ensuring the projectile can reach the target at any allowed angle.
