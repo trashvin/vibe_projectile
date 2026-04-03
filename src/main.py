@@ -52,7 +52,7 @@ class VibeProjectileApp(pyglet.window.Window):
         min_x = max(min_x, 40)
         max_x = min(max_x, constants.WINDOW_WIDTH - self.tank.width - 40)
         min_move_m = 500
-        max_move_m = 5000
+        max_move_m = 50000
         if getattr(self, "is_first_move", False):
             # First move: always towards the city, clamp so tank never comes closer than 10,000m to dome edge and never passes the dome
             direction = 1 if self.tank.x < constants.CITY_X else -1
@@ -60,9 +60,10 @@ class VibeProjectileApp(pyglet.window.Window):
             move_dist_px = int(move_dist_m / constants.METERS_PER_PIXEL)
             dome_left_edge = constants.CITY_X - int(constants.DOME_RADIUS_M / constants.METERS_PER_PIXEL)
             dome_min_x = dome_left_edge + int(10000 / constants.METERS_PER_PIXEL)
-            # Clamp so tank never passes the dome's left edge plus min distance
+            max_x_300k = int(300000 / constants.METERS_PER_PIXEL)
+            # Clamp so tank never passes the dome's left edge plus min distance or 300,000 meters from left
             if direction == 1:
-                max_goal = dome_min_x
+                max_goal = min(dome_min_x, max_x_300k)
                 goal = min(self.tank.x + move_dist_px, max_goal)
             else:
                 min_goal = dome_min_x

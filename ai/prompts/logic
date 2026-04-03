@@ -1,7 +1,7 @@
 # notes here
 
 Instruction
-1. At the start of the app, the tank should move a random distance (500 - 5000 meters) towards the city. The animation should show the tank moving visibly (in screen units this is scaled up for display).
+1. At the start of the app, the tank should move a random distance (500 - 50000 meters) towards the city. The animation should show the tank moving visibly (in screen units this is scaled up for display).
 2. It will stop and fire one projectile towards the city, at a random target near the city center. The projectile should be fired at a random angle between 10 and 60 degrees, so that it can hit different areas of the city and dome.
 	The angle at which the projectile was fired should be displayed as text on the screen.
 3. Projectile kinetic parameters should be chosen so the shot can reach the dome and the city center is within the possible hit area.
