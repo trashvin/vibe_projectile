@@ -596,8 +596,8 @@ class VibeProjectileApp(pyglet.window.Window):
                     self.projectile.y,
                     speed=600
                 )
-                # 95% chance to hit
-                if random.random() < 0.95:
+                # 50% chance to hit
+                if random.random() < 0.5:
                     self.missile_result = "hit"
                     # Immediately destroy projectile if missile hits
                     self.projectile.alive = False

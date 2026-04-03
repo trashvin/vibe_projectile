@@ -5,7 +5,7 @@ Instruction
 2. It will stop and fire one projectile towards the city, at a random target near the city center. The projectile should be fired at a random angle between 10 and 60 degrees, so that it can hit different areas of the city and dome.
 	The angle at which the projectile was fired should be displayed as text on the screen.
 3. Projectile kinetic parameters should be chosen so the shot can reach the dome and the city center is within the possible hit area.
-4. Once the projectile hits the dome, the anti-missile launcher fires a missile towards the projectile. The anti-missile launcher has a 95% chance to hit the projectile.
+4. Once the projectile hits the dome, the anti-missile launcher fires a missile towards the projectile. The anti-missile launcher has a 50% chance to hit the projectile.
     a. If the projectile is hit (missile_result is 'hit' or 'safe'), the city is safe: the projectile from the tank explodes in the air, disappears, and does not continue its path. The screen displays "we are safe". Pressing Enter will restart the process from step #1.
     b. If the projectile is not hit (missile_result is None, 'fail', or 'miss'), the projectile continues its path until it hits the ground; then the city explodes with a large nuclear cloud, draw a cloud all over the city to indicate explosion, and the app displays "the end" on the screen.
 
