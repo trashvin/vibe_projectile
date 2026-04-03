@@ -14,6 +14,21 @@ Instruction
     b. If the user selects No (N), the screen displays "good bye" and the app stops firing or animating. All previous text but retain the scene should be cleared before displaying the goodbye message.
 10. When the missile hits the projectile and the city is safe, the app should display "we are safe" on the screen. Pressing Enter will restart the process from step 1.
 
+Display / end-state changes (implementation notes)
+- Track a `hit_target` state on the app instance (set to None / "city" / "tank").
+- When the projectile lands and the city is destroyed, set `hit_target = "city"`, `game_over = True`, and `show_try_again = True`. The on-screen end text should read: "the end — CITY IS HIT".
+- When the spaceship bomb sequence completes and the tank explodes, set `hit_target = "tank"`, `game_over = True`, and `show_try_again = True`. The on-screen end text should read: "the end — TANK IS HIT".
+- When the user selects No (N) at the "Try again? (Y/N)" prompt, determine `winner` ("TANK"/"CITY"/"DRAW") as before but clear or suppress the city/tank explosion overlay (no nuke cloud). Display only the winner overlay: "WINNER: <TANK|CITY|DRAW>" on a clean screen (no other overlays).
+
+Other small runtime changes made in codebase
+- `reset_game` and `__init__` now initialize `hit_target = None` and ensure it is cleared when restarting.
+- `on_draw` draws the game-over end-message using `hit_target` to choose between city/tank text. If `winner` is set (user chose N), the winner overlay is drawn instead of the nuke/cloud.
+- Entities now call sound hooks via `src.sound_player.SoundPlayer`:
+    - `Tank.start_moving()` / `Tank.stop_moving()` play/stop the moving-tank sound.
+    - `Spaceship.start_flying()` / `stop_flying()` play/stop the spaceship flight sound.
+    - `Bomb.drop()` plays the falling-bomb sound.
+    - Anti-missile launcher firing and explosions use sound playback as implemented in `src/sound_player.py`.
+
 # Implementation Note:
 # The ground collision and city explosion/game over logic is handled in main.py (VibeProjectileApp.update).
 # The Projectile.update method does NOT set alive=False or clamp y when hitting the ground; this ensures main.py always triggers the explosion/game over logic.

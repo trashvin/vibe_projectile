@@ -7,19 +7,29 @@ City
 - the buildings should mimic the buildings from the game Mario.
 - the city is protected by an invisible dome represented by white lines.
 - the dome's center is at the center of the city at ground level. It covers a 250 kilometer radius in the land and air.
+- when the city is hit and explodes, it should play the ..\media\sound_moving_explosion.mp3 3 times.
 
 Tank
 - description of the tank
 - the tank is similar to an old world war 2 US tank.
 - the tank should fire the projectile at a random angle between 10 and 60 degrees, so that it can hit different areas of the city and dome. The initial velocity of the projectile should be enough to reach the center of the anti-missile launcher.
 - the tank's canon angle should adjust based on the angle of the projectile.
+- when the tank moves, the sound ..\media\sound_moving_tank.mp3 should be played. and when it stops moving, it should stop the sound.
+- when the tank is hit and explodes, it should play the ..\media\sound_explosion.mp3 once.
 
 Anti-missile launcher
 - The anti-missile launcher must be positioned at ground level (not on top of any building) and point in the direction of the incoming projectile.
 - The anti-missile launcher fires a missile towards the projectile when it hits the dome, with a 100% chance to hit.
 - If the projectile is hit, the city is safe (explosion only at the projectile). If not, the projectile continues and may cause a city explosion if it hits the ground.
+- when the anti-missile fires, the sound ..\media\sound_laser.mp3 should be played once.
 
 missile
 - this fired by te anti-missile launcher
 - its an oblong projectile that is aimed at the incoming projectile.
 - it also follows the physics behind projectiles.
+
+Spaceship
+- when the spaceship flies, it should play the sound ..\media\sound_spaceship.mp3 while flying.
+
+Bomb
+- when the bomb is dropped from the spaceship, it should play the sound ..\media\sound_falling_bomb.mp3 once.

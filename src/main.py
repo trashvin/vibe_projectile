@@ -80,6 +80,11 @@ class VibeProjectileApp(pyglet.window.Window):
                 goal = max(min_x, min(goal, max_x))
         self.tank_move_goal = goal
         self.state = "moving"
+        # Start tank movement sound
+        try:
+            self.tank.start_moving()
+        except Exception:
+            pass
         self.is_first_move = False
 
     # (Removed duplicate update method here; see below for the main update method)
@@ -92,10 +97,18 @@ class VibeProjectileApp(pyglet.window.Window):
         self.spaceship_target_x = self.tank.x + self.tank.width / 2
         self.spaceship_target_y = self.tank.y + self.tank.height / 2
         self.spaceship_bomb_y = self.spaceship_y
+                
         self.spaceship_active = True
         self.spaceship_bomb_dropped = False
         self.spaceship_explosion_done = False
         self.state = "spaceship_attack"
+        # Ensure spaceship instance exists and start flight sound
+        try:
+            if not hasattr(self, "spaceship") or self.spaceship is None:
+                self.spaceship = entities.Spaceship()
+            self.spaceship.start_flying()
+        except Exception:
+            pass
         print(f"[DEBUG] Spaceship triggered: spaceship_active={self.spaceship_active}, spaceship_x={self.spaceship_x}, spaceship_y={self.spaceship_y}, spaceship_target_x={self.spaceship_target_x}, spaceship_target_y={self.spaceship_target_y}")
 
     def reset_spaceship_state(self):
@@ -107,6 +120,13 @@ class VibeProjectileApp(pyglet.window.Window):
         self.spaceship_target_x = None
         self.spaceship_target_y = None
         self.spaceship_bomb_y = None
+        # Stop spaceship flight sound if active
+        try:
+            if hasattr(self, "spaceship") and self.spaceship is not None:
+                self.spaceship.stop_flying()
+                self.spaceship = None
+        except Exception:
+            pass
 
     def reset_game(self):
         self.city = entities.City.create()
@@ -127,6 +147,7 @@ class VibeProjectileApp(pyglet.window.Window):
         self.game_over = False
         self.show_try_again = False
         self.goodbye = False
+        self.hit_target = None
         self.missile_hit_streak = 0
         self.reset_spaceship_state()
     def fire_projectile(self):
@@ -192,6 +213,10 @@ class VibeProjectileApp(pyglet.window.Window):
         self.winner = None
         self.winner_flash_timer = 0.0
         self.winner_flash_on = True
+        self.hit_target = None
+        self.game_over = False
+        self.show_try_again = False
+        self.goodbye = False
 
     def on_draw(self):
         pyglet.gl.glClearColor(0.58, 0.82, 0.98, 1.0)
@@ -351,16 +376,31 @@ class VibeProjectileApp(pyglet.window.Window):
 
         # Draw a big nuclear cloud over the city if game over (draw last, on top)
         if getattr(self, "game_over", False):
+            # If user pressed N, winner is decided — show only the winner screen
+            if getattr(self, "winner", None) is not None:
+                winner_label = pyglet.text.Label(
+                    f"WINNER: {self.winner}",
+                    font_name="Arial Black",
+                    font_size=64,
+                    x=constants.WINDOW_WIDTH // 2,
+                    y=constants.WINDOW_HEIGHT // 2,
+                    anchor_x="center",
+                    anchor_y="center",
+                    color=(255, 255, 0, 255),
+                )
+                winner_label.draw()
+                return
             nuke = shapes.Circle(self.city.center_x, self.city.center_y + 60, 320, color=(255, 200, 60))
             nuke.opacity = 120
             nuke.draw()
             stem = shapes.Rectangle(self.city.center_x - 28, self.city.center_y, 56, 120, color=(220, 180, 80))
             stem.opacity = 90
             stem.draw()
+            hit_msg = "TANK IS HIT" if getattr(self, "hit_target", None) == "tank" else "CITY IS HIT"
             end_label = pyglet.text.Label(
-                "the end",
+                f"the end — {hit_msg}",
                 font_name="Arial Black",
-                font_size=64,
+                font_size=48,
                 color=(255, 0, 0, 255),
                 x=constants.WINDOW_WIDTH // 2,
                 y=constants.WINDOW_HEIGHT // 2,
@@ -368,17 +408,6 @@ class VibeProjectileApp(pyglet.window.Window):
                 anchor_y="center",
             )
             end_label.draw()
-            debug_label = pyglet.text.Label(
-                "CITY IS HIT",
-                font_name="Arial Black",
-                font_size=36,
-                color=(255, 0, 0, 255),
-                x=constants.WINDOW_WIDTH // 2,
-                y=constants.WINDOW_HEIGHT // 2 - 80,
-                anchor_x="center",
-                anchor_y="center",
-            )
-            debug_label.draw()
             # Always show try again prompt if set
             if getattr(self, "show_try_again", False):
                 try_again_label = pyglet.text.Label(
@@ -387,7 +416,7 @@ class VibeProjectileApp(pyglet.window.Window):
                     font_size=48,
                     color=(0, 0, 0, 255),
                     x=constants.WINDOW_WIDTH // 2,
-                    y=constants.WINDOW_HEIGHT // 2 - 180,
+                    y=constants.WINDOW_HEIGHT // 2 - 100,
                     anchor_x="center",
                     anchor_y="center",
                 )
@@ -546,9 +575,12 @@ class VibeProjectileApp(pyglet.window.Window):
                     self.winner = "CITY"
                 else:
                     self.winner = "DRAW"
+                # Ensure end state is active so the winner overlay is drawn
                 self.winner_flash_timer = 0.0
                 self.winner_flash_on = True
                 self.show_try_again = False
+                self.game_over = True
+                self.goodbye = False
                 return
             return
         if getattr(self, "goodbye", False):
@@ -590,6 +622,11 @@ class VibeProjectileApp(pyglet.window.Window):
                 self.spaceship_x = self.spaceship_target_x
                 self.spaceship_y = self.spaceship_target_y + 120
                 self.spaceship_bomb_dropped = True
+                # Play bomb drop sound
+                try:
+                    entities.Bomb().drop()
+                except Exception:
+                    pass
                 self.spaceship_bomb_y = self.spaceship_y
             elif self.spaceship_bomb_dropped and not self.spaceship_explosion_done:
                 # Drop bomb
@@ -612,6 +649,8 @@ class VibeProjectileApp(pyglet.window.Window):
                 if self.spaceship_explosion_timer > 1.5:
                     self.show_try_again = True
                     self.spaceship_active = False
+                    self.game_over = True
+                    self.hit_target = "tank"
                     self.spaceship_explosion_timer = 0.0
             return
 
@@ -622,6 +661,11 @@ class VibeProjectileApp(pyglet.window.Window):
             if abs(distance_to_goal) <= movement_step:
                 self.tank.x = self.tank_move_goal
                 self.state = "ready"
+                # Stop tank movement sound when goal reached
+                try:
+                    self.tank.stop_moving()
+                except Exception:
+                    pass
             elif distance_to_goal > 0:
                 self.tank.x += movement_step
             else:
@@ -687,6 +731,7 @@ class VibeProjectileApp(pyglet.window.Window):
                     self.game_over = True
                     self.show_try_again = True
                     self.goodbye = False
+                    self.hit_target = "city"
                     print("City explosion triggered: projectile hit the ground!")
                     print("city is hit")
                     self.tank_score += 1  # TANK scores when city explodes

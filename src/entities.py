@@ -1,52 +1,12 @@
-class Missile:
-    def __init__(self, start_x, start_y, target_x, target_y, speed=600):
-        self.x = start_x
-        self.y = start_y
-        self.target_x = target_x
-        self.target_y = target_y
-        self.speed = speed
-        self.alive = True
-        dx = target_x - start_x
-        dy = target_y - start_y
-        dist = math.hypot(dx, dy)
-        if dist == 0:
-            self.vx = 0
-            self.vy = 0
-        else:
-            self.vx = dx / dist * speed
-            self.vy = dy / dist * speed
-
-    def update(self, dt):
-        if not self.alive:
-            return
-        dx = self.target_x - self.x
-        dy = self.target_y - self.y
-        dist = math.hypot(dx, dy)
-        step = self.speed * dt
-        if dist <= step:
-            self.x = self.target_x
-            self.y = self.target_y
-            self.alive = False
-        else:
-            self.x += self.vx * dt
-            self.y += self.vy * dt
-
-    def draw(self, batch):
-        color = (0, 255, 80) if self.alive else (120, 180, 120)
-        # Make missile larger and green
-        pyglet.shapes.Ellipse(self.x, self.y, 32, 14, color=color).draw()
-        # Draw a green line showing the missile's path
-        pyglet.shapes.Line(self.x, self.y, self.target_x, self.target_y, color=(0, 200, 80)).draw()
 import math
 import random
 import pyglet
 from dataclasses import dataclass
-
+from src.sound_player import SoundPlayer
 try:
     from src import constants
 except ImportError:
     import constants
-
 
 @dataclass
 class Building:
@@ -54,7 +14,6 @@ class Building:
     y: float
     width: float
     height: float
-
 
 class City:
     def __init__(self, buildings, center_x, center_y):
@@ -64,17 +23,6 @@ class City:
         # Anti-missile launcher must be at ground level, at city center
         self.anti_missile_launcher_x = center_x
         self.anti_missile_launcher_y = constants.GROUND_HEIGHT
-
-    # Remove old _compute_laser_cannon_y, fix indentation for _compute_anti_missile_launcher_y
-    def _compute_anti_missile_launcher_y(self):
-        mid_x = self.center_x
-        supporting_heights = [
-            building.y + building.height
-            for building in self.buildings
-            if building.x <= mid_x <= building.x + building.width
-        ]
-        top_y = max(supporting_heights, default=constants.GROUND_HEIGHT + 120)
-        return top_y + 18
 
     @classmethod
     def create(cls):
@@ -95,25 +43,41 @@ class City:
         return cls(buildings=buildings, center_x=center_x, center_y=center_y)
 
     def draw(self, batch, tank=None, fade=0):
-        # fade: 0 = normal, 1 = fully transparent, 0.5 = half faded, etc.
         building_opacity = int(255 * (1.0 - fade))
         roof_opacity = int(255 * (1.0 - fade))
         window_opacity = int(180 * (1.0 - fade))
-        for b in self.buildings:
-            rect = pyglet.shapes.Rectangle(b.x, b.y, b.width, b.height, color=(108, 136, 224), batch=batch)
+
+        for building in self.buildings:
+            rect = pyglet.shapes.Rectangle(
+                building.x,
+                building.y,
+                building.width,
+                building.height,
+                color=(108, 136, 224),
+                batch=batch,
+            )
             rect.opacity = building_opacity
             rect.draw()
-            roof = pyglet.shapes.Rectangle(b.x + 4, b.y + b.height - 10, b.width - 8, 10, color=(178, 82, 66), batch=batch)
+
+            roof = pyglet.shapes.Rectangle(
+                building.x + 4,
+                building.y + building.height - 10,
+                building.width - 8,
+                10,
+                color=(178, 82, 66),
+                batch=batch,
+            )
             roof.opacity = roof_opacity
             roof.draw()
-            for row_y in range(int(b.y + 18), int(b.y + b.height - 20), 24):
-                for col_x in range(int(b.x + 10), int(b.x + b.width - 10), 14):
+
+            for row_y in range(int(building.y + 18), int(building.y + building.height - 20), 24):
+                for col_x in range(int(building.x + 10), int(building.x + building.width - 10), 14):
                     window = pyglet.shapes.Rectangle(col_x, row_y, 6, 10, color=(245, 223, 120), batch=batch)
                     window.opacity = window_opacity
                     window.draw()
 
-            cannon_x = self.anti_missile_launcher_x
-            cannon_y = self.anti_missile_launcher_y
+        cannon_x = self.anti_missile_launcher_x
+        cannon_y = self.anti_missile_launcher_y
         base = pyglet.shapes.Rectangle(cannon_x - 14, cannon_y - 18, 28, 14, color=(66, 66, 70), batch=batch)
         base.draw()
         body = pyglet.shapes.Rectangle(cannon_x - 10, cannon_y - 8, 20, 16, color=(200, 50, 50), batch=batch)
@@ -132,6 +96,9 @@ class City:
             barrel = pyglet.shapes.Rectangle(cannon_x + 7, cannon_y + 3, 24, 6, color=(255, 80, 80), batch=batch)
             barrel.draw()
 
+    def explode(self):
+        # Play explosion sound 3 times
+        SoundPlayer.play_sound("media/sound_moving_explosion.mp3", repeat=3)
 
 class Dome:
     def __init__(self, center_x, center_y, radius_m):
@@ -159,7 +126,6 @@ class Dome:
                 line.draw()
             previous_point = (x, y)
 
-
 class Tank:
     def __init__(self):
         self.x = constants.TANK_X
@@ -168,6 +134,7 @@ class Tank:
         self.height = 40
         self.barrel_length = 65
         self.angle_deg = 35
+        self._moving = False
 
     def draw(self, batch):
         track = pyglet.shapes.Rectangle(self.x + 6, self.y - 2, self.width - 12, 14, color=(60, 60, 60), batch=batch)
@@ -176,17 +143,14 @@ class Tank:
         body.draw()
         glacis = pyglet.shapes.Rectangle(self.x + 12, self.y + self.height - 2, self.width - 24, 10, color=(158, 144, 98), batch=batch)
         glacis.draw()
-
         turret_radius = 20
         turret = pyglet.shapes.Circle(self.x + self.width * 0.5, self.y + self.height + turret_radius * 0.2, turret_radius, color=(170, 160, 80), batch=batch)
         turret.draw()
-
         angle_rad = math.radians(self.angle_deg)
         barrel_start_x = self.x + self.width * 0.5
         barrel_start_y = self.y + self.height + turret_radius * 0.2
         barrel_end_x = barrel_start_x + math.cos(angle_rad) * self.barrel_length
         barrel_end_y = barrel_start_y + math.sin(angle_rad) * self.barrel_length
-
         for offset in (-2, 0, 2):
             barrel = pyglet.shapes.Line(
                 barrel_start_x,
@@ -197,37 +161,66 @@ class Tank:
                 batch=batch,
             )
             barrel.draw()
-
         for i in range(3):
             wheel_x = self.x + 15 + i * 20
             wheel = pyglet.shapes.Circle(wheel_x, self.y + 8, 8, color=(80, 80, 80), batch=batch)
             wheel.draw()
 
+    def start_moving(self):
+        if not self._moving:
+            SoundPlayer.play_sound("media/sound_moving_tank.mp3", loop=True)
+            self._moving = True
 
-def solve_launch_parameters(origin_x, origin_y, target_x, target_y):
-    dx = target_x - origin_x
-    dy = target_y - origin_y
-    if dx <= 0:
-        return 45.0, constants.PROJECTILE_SPEED
+    def stop_moving(self):
+        if self._moving:
+            SoundPlayer.stop_sound("media/sound_moving_tank.mp3")
+            self._moving = False
 
-    best_angle = 45.0
-    best_speed = None
-    for angle_tenths in range(100, 601, 5):
-        angle_deg = angle_tenths / 10.0
-        angle_rad = math.radians(angle_deg)
-        denom = dx * math.tan(angle_rad) - dy
-        if denom <= 0:
-            continue
-        speed = math.sqrt((constants.GRAVITY * dx * dx) / (2 * (math.cos(angle_rad) ** 2) * denom))
-        if best_speed is None or speed < best_speed:
-            best_angle = angle_deg
-            best_speed = speed
+    def explode(self):
+        SoundPlayer.play_sound("media/sound_explosion.mp3", repeat=1)
 
-    if best_speed is None:
-        return 60.0, constants.PROJECTILE_SPEED * 1.75
+class Missile:
+    def __init__(self, start_x, start_y, target_x, target_y, speed=600):
+        self.x = start_x
+        self.y = start_y
+        self.target_x = target_x
+        self.target_y = target_y
+        self.speed = speed
+        self.alive = True
+        dx = target_x - start_x
+        dy = target_y - start_y
+        dist = math.hypot(dx, dy)
+        if dist == 0:
+            self.vx = 0
+            self.vy = 0
+        else:
+            self.vx = dx / dist * speed
+            self.vy = dy / dist * speed
+        # Play anti-missile launcher fire sound
+        SoundPlayer.play_sound("media/sound_laser.mp3")
+    
+    def update(self, dt):
+        if not self.alive:
+            return
+        dx = self.target_x - self.x
+        dy = self.target_y - self.y
+        dist = math.hypot(dx, dy)
+        step = self.speed * dt
+        if dist <= step:
+            self.x = self.target_x
+            self.y = self.target_y
+            self.alive = False
+        else:
+            # move along velocity vector
+            self.x += self.vx * dt
+            self.y += self.vy * dt
 
-    return best_angle, max(best_speed, constants.PROJECTILE_SPEED)
-
+    def draw(self, batch):
+        color = (0, 255, 80) if self.alive else (120, 180, 120)
+        # Draw missile body as ellipse
+        pyglet.shapes.Ellipse(self.x, self.y, 18, 8, color=color, batch=batch).draw()
+        # Draw a line showing the missile's path to target
+        pyglet.shapes.Line(self.x, self.y, self.target_x, self.target_y, color=(0, 200, 80), batch=batch).draw()
 
 class Projectile:
     def __init__(self, x, y, vx, vy, radius=constants.PROJECTILE_RADIUS):
@@ -265,3 +258,24 @@ class Projectile:
         color = (255, 25, 25) if self.alive else (255, 180, 180)
         circle = pyglet.shapes.Circle(self.x, self.y, self.radius, color=color, batch=batch)
         circle.draw()
+
+class Spaceship:
+    def __init__(self):
+        self.flying = False
+
+    def start_flying(self):
+        if not self.flying:
+            SoundPlayer.play_sound("media/sound_spaceship.mp3", loop=True)
+            self.flying = True
+
+    def stop_flying(self):
+        if self.flying:
+            SoundPlayer.stop_sound("media/sound_spaceship.mp3")
+            self.flying = False
+
+class Bomb:
+    def __init__(self):
+        pass
+
+    def drop(self):
+        SoundPlayer.play_sound("media/sound_falling_bomb.mp3")
