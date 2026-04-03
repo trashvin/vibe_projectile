@@ -336,7 +336,6 @@ class VibeProjectileApp(pyglet.window.Window):
                 anchor_y="center",
             )
             end_label.draw()
-            # Debug overlay
             debug_label = pyglet.text.Label(
                 "CITY IS HIT",
                 font_name="Arial Black",
@@ -348,21 +347,19 @@ class VibeProjectileApp(pyglet.window.Window):
                 anchor_y="center",
             )
             debug_label.draw()
-        # Show goodbye message and clear all overlays/text
-        if getattr(self, "goodbye", False):
-            pyglet.gl.glClearColor(1.0, 1.0, 1.0, 1.0)
-            self.clear()
-            goodbye_label = pyglet.text.Label(
-                "good bye",
-                font_name="Arial Black",
-                font_size=64,
-                color=(0, 0, 0, 255),
-                x=constants.WINDOW_WIDTH // 2,
-                y=constants.WINDOW_HEIGHT // 2,
-                anchor_x="center",
-                anchor_y="center",
-            )
-            goodbye_label.draw()
+            # Always show try again prompt if set
+            if getattr(self, "show_try_again", False):
+                try_again_label = pyglet.text.Label(
+                    "Try again? (Y/N)",
+                    font_name="Arial Black",
+                    font_size=48,
+                    color=(0, 0, 0, 255),
+                    x=constants.WINDOW_WIDTH // 2,
+                    y=constants.WINDOW_HEIGHT // 2 - 180,
+                    anchor_x="center",
+                    anchor_y="center",
+                )
+                try_again_label.draw()
             return
         # Show try again prompt ON TOP of all overlays
         if getattr(self, "show_try_again", False):
@@ -469,8 +466,8 @@ class VibeProjectileApp(pyglet.window.Window):
             if symbol == pyglet.window.key.Y:
                 self.reset_game()
             elif symbol == pyglet.window.key.N:
-                self.goodbye = True
-                self.show_try_again = False
+                self.close()
+                return
             return
         if getattr(self, "goodbye", False):
             return
@@ -645,19 +642,6 @@ class VibeProjectileApp(pyglet.window.Window):
                 anchor_y="center",
             )
             try_again_label.draw()
-        # Show goodbye message
-        if getattr(self, "goodbye", False):
-            goodbye_label = pyglet.text.Label(
-                "good bye",
-                font_name="Arial Black",
-                font_size=64,
-                color=(0, 0, 0, 255),
-                x=constants.WINDOW_WIDTH // 2,
-                y=constants.WINDOW_HEIGHT // 2,
-                anchor_x="center",
-                anchor_y="center",
-            )
-            goodbye_label.draw()
 
         # Update missile if present
         if hasattr(self, "missile") and self.missile is not None and self.missile.alive:
